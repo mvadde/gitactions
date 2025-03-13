@@ -1,17 +1,16 @@
-name: Merge develop to feature branches
+name: Auto PR from develop to feature branches
 
 on:
   push:
     branches:
-      - develop
+      - develop  # Trigger when commits are pushed to develop branch
 
 permissions:
   contents: write
   pull-requests: write
-  actions: write
 
 jobs:
-  develop-to-features:
+  auto-create-prs:
     runs-on: ubuntu-latest
 
     steps:
@@ -28,74 +27,43 @@ jobs:
       - name: Fetch all branches
         run: git fetch --all
 
-      - name: List remote branches
-        run: git branch -r
-
       - name: Get feature branches
         id: get_branches
         run: |
+          # Get all branches starting with 'feature/'
           branches=$(git branch -r | grep 'origin/feature/' | sed 's|origin/||')
           echo "branches=$branches" >> $GITHUB_ENV
-          echo "branches=$branches"
+          echo "branches=$branches"  # Debug output for branches
 
       - name: Debug feature branches
         run: |
           echo "Feature branches: ${{ env.branches }}"
 
-      - name: Check for changes and handle conflicts
+      - name: Create PR for each feature branch
         run: |
           for branch in ${{ env.branches }}; do
-            # Checkout the feature branch
-            git checkout $branch
-            git pull origin develop --rebase || true
-            if [ -n "$(git status --porcelain)" ]; then
-              echo "Changes detected in $branch"
-              git add .
-              git commit -m "Resolve merge conflicts"
-            else
-              echo "No changes detected in $branch"
-            fi
-
-            # Create PR branch based on develop
-            pr_branch="${branch}-pr"
-            git checkout -B $pr_branch origin/develop
-            git push --set-upstream origin $pr_branch
-          done
-
-      - name: Create pull requests
-        id: create_prs
-        run: |
-          for branch in ${{ env.branches }}; do
-            pr_branch="${branch}-pr"
-            # Ensure that the PR branch has changes before creating the PR
-            git checkout $pr_branch
-            git pull origin develop
-
-            # Only create PR if there are new commits
-            if [ -n "$(git log origin/develop..$pr_branch)" ]; then
-              # Create the pull request using GitHub CLI (gh)
-              gh pr create --base develop --head $pr_branch --title "Auto PR from develop to $branch" --body "This is an automated pull request from develop to feature branch $branch."
-            else
-              echo "No changes detected between develop and $pr_branch, skipping PR creation."
-            fi
+            # Create a pull request from develop to feature branch
+            gh pr create --base $branch --head develop --title "Auto PR from develop to $branch" --body "This is an automated pull request from develop to $branch."
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Auto approve pull requests
-        if: steps.create_prs.outputs.pull-request-url
         run: |
-          pr_url="${{ steps.create_prs.outputs.pull-request-url }}"
-          pr_number=$(echo $pr_url | grep -oP '\d+$')
-          gh pr review $pr_number --approve
+          # Approve each pull request created
+          for pr_url in ${{ steps.create_prs.outputs.pull-request-url }}; do
+            pr_number=$(echo $pr_url | grep -oP '\d+$')
+            gh pr review $pr_number --approve
+          done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Enable auto-merge
-        if: steps.create_prs.outputs.pull-request-url
         run: |
-          pr_url="${{ steps.create_prs.outputs.pull-request-url }}"
-          pr_number=$(echo $pr_url | grep -oP '\d+$')
-          gh pr merge $pr_number --auto --merge
+          # Enable auto-merge for each pull request
+          for pr_url in ${{ steps.create_prs.outputs.pull-request-url }}; do
+            pr_number=$(echo $pr_url | grep -oP '\d+$')
+            gh pr merge $pr_number --auto --merge
+          done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
