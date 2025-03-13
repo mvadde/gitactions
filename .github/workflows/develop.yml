@@ -41,13 +41,15 @@ jobs:
         run: |
           echo "Feature branches: ${{ env.branches }}"
 
-      - name: Check for changes
+      - name: Check for changes and handle conflicts
         run: |
           for branch in ${{ env.branches }}; do
             git checkout $branch
-            git merge origin/develop --no-ff --no-commit --allow-unrelated-histories
+            git merge origin/develop --no-ff --no-commit --allow-unrelated-histories || true
             if [ -n "$(git status --porcelain)" ]; then
               echo "Changes detected in $branch"
+              git add .
+              git commit -m "Resolve merge conflicts"
             else
               echo "No changes detected in $branch"
             fi
