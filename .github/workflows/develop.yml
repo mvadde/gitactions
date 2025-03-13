@@ -45,7 +45,7 @@ jobs:
         run: |
           for branch in ${{ env.branches }}; do
             git checkout $branch
-            git merge origin/develop --no-ff --no-commit --allow-unrelated-histories || true
+            git pull origin develop --rebase || true
             if [ -n "$(git status --porcelain)" ]; then
               echo "Changes detected in $branch"
               git add .
@@ -53,7 +53,6 @@ jobs:
             else
               echo "No changes detected in $branch"
             fi
-            git reset --hard
           done
 
       - name: Create pull requests
@@ -64,25 +63,23 @@ jobs:
           commit-message: 'Auto PR from develop to feature branches'
           title: 'Auto PR from develop to feature branches'
           body: 'This is an automated pull request from develop to feature branches.'
-          branch: ${{ env.branches }}-pr
+          branch: ${{ github.head_ref }} # Use feature branch dynamically
           base: develop
 
       - name: Auto approve pull requests
         if: steps.create_prs.outputs.pull-request-url
         run: |
-          for pr_url in ${{ steps.create_prs.outputs.pull-request-url }}; do
-            pr_number=$(echo $pr_url | grep -oP '\d+$')
-            gh pr review $pr_number --approve
-          done
+          pr_url="${{ steps.create_prs.outputs.pull-request-url }}"
+          pr_number=$(echo $pr_url | grep -oP '\d+$')
+          gh pr review $pr_number --approve
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Enable auto-merge
         if: steps.create_prs.outputs.pull-request-url
         run: |
-          for pr_url in ${{ steps.create_prs.outputs.pull-request-url }}; do
-            pr_number=$(echo $pr_url | grep -oP '\d+$')
-            gh pr merge $pr_number --auto --merge
-          done
+          pr_url="${{ steps.create_prs.outputs.pull-request-url }}"
+          pr_number=$(echo $pr_url | grep -oP '\d+$')
+          gh pr merge $pr_number --auto --merge
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
