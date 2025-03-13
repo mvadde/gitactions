@@ -1,16 +1,16 @@
-name: Merge develop to feature branches
+name: Auto PR from develop to feature branches
 
 on:
   push:
     branches:
-      - develop
+      - develop  # Trigger when commits are pushed to develop branch
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
-  develop-to-features:
+  auto-create-prs:
     runs-on: ubuntu-latest
 
     steps:
@@ -27,34 +27,30 @@ jobs:
       - name: Fetch all branches
         run: git fetch --all
 
-      - name: List all branches
-        run: git branch -r
-
       - name: Get feature branches
         id: get_branches
         run: |
+          # Get all branches starting with 'feature/'
           branches=$(git branch -r | grep 'origin/feature/' | sed 's|origin/||')
           echo "branches=$branches" >> $GITHUB_ENV
-          echo "branches=$branches"
+          echo "branches=$branches"  # Debug output for branches
 
       - name: Debug feature branches
         run: |
           echo "Feature branches: ${{ env.branches }}"
 
-      - name: Create pull requests
-        id: create_prs
-        uses: peter-evans/create-pull-request@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: 'Auto PR from develop to feature branches'
-          title: 'Auto PR from develop to feature branches'
-          body: 'This is an automated pull request from develop to feature branches.'
-          branch: ${{ env.branches }}
-          base: develop
+      - name: Create PR for each feature branch
+        run: |
+          for branch in ${{ env.branches }}; do
+            # Create a pull request from develop to feature branch
+            gh pr create --base $branch --head develop --title "Auto PR from develop to $branch" --body "This is an automated pull request from develop to $branch."
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Auto approve pull requests
-        if: steps.create_prs.outputs.pull-request-url
         run: |
+          # Approve each pull request created
           for pr_url in ${{ steps.create_prs.outputs.pull-request-url }}; do
             pr_number=$(echo $pr_url | grep -oP '\d+$')
             gh pr review $pr_number --approve
@@ -63,8 +59,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Enable auto-merge
-        if: steps.create_prs.outputs.pull-request-url
         run: |
+          # Enable auto-merge for each pull request
           for pr_url in ${{ steps.create_prs.outputs.pull-request-url }}; do
             pr_number=$(echo $pr_url | grep -oP '\d+$')
             gh pr merge $pr_number --auto --merge
