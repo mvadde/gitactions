@@ -46,11 +46,11 @@ jobs:
         uses: peter-evans/create-pull-request@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          source-branch: develop
           commit-message: 'Auto PR from develop to feature branches'
           title: 'Auto PR from develop to feature branches'
           body: 'This is an automated pull request from develop to feature branches.'
           branch: ${{ env.branches }}
+          base: develop
 
       - name: Auto approve pull requests
         if: steps.create_prs.outputs.pull-request-url
