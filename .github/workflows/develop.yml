@@ -25,6 +25,7 @@ jobs:
           echo "::set-output name=branches::$branches"
 
       - name: Create pull requests
+        id: create_prs
         uses: peter-evans/create-pull-request@v3
         with:
           source-branch: develop
@@ -32,16 +33,23 @@ jobs:
           title: 'Auto PR from develop to feature branches'
           body: 'This is an automated pull request from develop to feature branches.'
           branches: ${{ steps.get_branches.outputs.branches }}
-      
+
       - name: Auto approve pull requests
-        uses: hmarr/auto-approve-action@v4
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+        if: steps.create_prs.outputs.pull-request-url
+        run: |
+          for pr_url in ${{ steps.create_prs.outputs.pull-request-url }}; do
+            pr_number=$(echo $pr_url | grep -oP '\d+$')
+            gh pr review $pr_number --approve
+          done
         env:
-          PULL_REQUEST_NUMBER: ${{ steps.create-pull-request.outputs.pull-request-number }}
-  
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Enable auto-merge
-        uses: alexwilson/enable-github-automerge-action@main
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          merge-method: MERGE # You can change this to SQUASH or REBASE if needed
+        if: steps.create_prs.outputs.pull-request-url
+        run: |
+          for pr_url in ${{ steps.create_prs.outputs.pull-request-url }}; do
+            pr_number=$(echo $pr_url | grep -oP '\d+$')
+            gh pr merge $pr_number --auto --merge
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
