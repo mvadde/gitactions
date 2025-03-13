@@ -41,6 +41,19 @@ jobs:
         run: |
           echo "Feature branches: ${{ env.branches }}"
 
+      - name: Check for changes
+        run: |
+          for branch in ${{ env.branches }}; do
+            git checkout $branch
+            git merge origin/develop --no-ff --no-commit
+            if [ -n "$(git status --porcelain)" ]; then
+              echo "Changes detected in $branch"
+            else
+              echo "No changes detected in $branch"
+            fi
+            git reset --hard
+          done
+
       - name: Create pull requests
         id: create_prs
         uses: peter-evans/create-pull-request@v3
