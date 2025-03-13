@@ -56,22 +56,28 @@ jobs:
               echo "No changes detected in $branch"
             fi
 
-            # Create PR branch and push changes
+            # Create PR branch based on develop
             pr_branch="${branch}-pr"
             git checkout -B $pr_branch origin/develop
             git push --set-upstream origin $pr_branch
           done
 
-      - name: Create or update pull requests
+      - name: Create pull requests
         id: create_prs
         run: |
           for branch in ${{ env.branches }}; do
-            # Create or update the PR branch based on 'develop'
             pr_branch="${branch}-pr"
-            git checkout -B $pr_branch origin/develop
+            # Ensure that the PR branch has changes before creating the PR
+            git checkout $pr_branch
+            git pull origin develop
 
-            # Create the pull request using GitHub CLI (gh)
-            gh pr create --base develop --head $pr_branch --title "Auto PR from develop to $branch" --body "This is an automated pull request from develop to feature branch $branch."
+            # Only create PR if there are new commits
+            if [ -n "$(git log origin/develop..$pr_branch)" ]; then
+              # Create the pull request using GitHub CLI (gh)
+              gh pr create --base develop --head $pr_branch --title "Auto PR from develop to $branch" --body "This is an automated pull request from develop to feature branch $branch."
+            else
+              echo "No changes detected between develop and $pr_branch, skipping PR creation."
+            fi
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
