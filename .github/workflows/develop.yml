@@ -45,7 +45,7 @@ jobs:
         run: |
           for branch in ${{ env.branches }}; do
             git checkout $branch
-            git merge origin/develop --no-ff --no-commit
+            git merge origin/develop --no-ff --no-commit --allow-unrelated-histories
             if [ -n "$(git status --porcelain)" ]; then
               echo "Changes detected in $branch"
             else
