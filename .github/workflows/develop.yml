@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 jobs:
   develop-to-features:
@@ -54,6 +55,11 @@ jobs:
             else
               echo "No changes detected in $branch"
             fi
+
+            # Create PR branch and push changes
+            pr_branch="${branch}-pr"
+            git checkout -B $pr_branch origin/develop
+            git push --set-upstream origin $pr_branch
           done
 
       - name: Create or update pull requests
@@ -64,7 +70,7 @@ jobs:
             pr_branch="${branch}-pr"
             git checkout -B $pr_branch origin/develop
 
-            # Create the pull request using the created branch
+            # Create the pull request using GitHub CLI (gh)
             gh pr create --base develop --head $pr_branch --title "Auto PR from develop to $branch" --body "This is an automated pull request from develop to feature branch $branch."
           done
         env:
