@@ -22,7 +22,7 @@ jobs:
         id: get_branches
         run: |
           branches=$(git branch -r | grep 'origin/feature/' | sed 's|origin/||')
-          echo "::set-output name=branches::$branches"
+          echo "branches=$branches" >> $GITHUB_ENV
 
       - name: Create pull requests
         id: create_prs
@@ -32,7 +32,7 @@ jobs:
           commit-message: 'Auto PR from develop to feature branches'
           title: 'Auto PR from develop to feature branches'
           body: 'This is an automated pull request from develop to feature branches.'
-          branches: ${{ steps.get_branches.outputs.branches }}
+          branches: ${{ env.branches }}
 
       - name: Auto approve pull requests
         if: steps.create_prs.outputs.pull-request-url
