@@ -36,6 +36,8 @@ jobs:
       run: |
         pr_url=$(gh pr create --base develop --head main --title "Auto PR from main to develop" --body "This is an automated pull request from main to develop." | grep -oP 'https://github.com/\S+')
         echo "pr_url=$pr_url" >> $GITHUB_ENV
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Auto approve pull requests
       run: |
