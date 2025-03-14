@@ -45,7 +45,7 @@ jobs:
           pr_urls=""
           for branch in ${{ env.branches }}; do
             # Create a pull request from develop to feature branch and capture the URL from the output
-            pr_url=$(gh pr create --base develop --head $branch --title "Auto PR from develop to $branch" --body "This is an automated pull request from develop to $branch." | grep -oP 'https://github.com/\S+')
+            pr_url=$(gh pr create --base $branch --head develop --title "Auto PR from develop to $branch" --body "This is an automated pull request from develop to $branch." | grep -oP 'https://github.com/\S+')
             pr_urls="$pr_urls $pr_url"
           done
           echo "pr_urls=$pr_urls" >> $GITHUB_ENV
@@ -56,7 +56,18 @@ jobs:
         run: |
           for pr_url in ${{ env.pr_urls }}; do
             pr_number=$(echo $pr_url | grep -oP '\d+$')
-            gh pr review $pr_number --approve
+
+            # Get the creator of the PR to check if it's the bot
+            pr_creator=$(gh pr view $pr_number --json author -q .author.login)
+            echo "PR #$pr_number created by $pr_creator"
+
+            # Skip approval if the creator is the bot
+            if [[ "$pr_creator" != "github-actions[bot]" ]]; then
+              echo "Approving PR #$pr_number"
+              gh pr review $pr_number --approve
+            else
+              echo "Skipping approval for PR #$pr_number (created by bot)"
+            fi
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
