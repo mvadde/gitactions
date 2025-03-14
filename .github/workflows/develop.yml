@@ -39,6 +39,14 @@ jobs:
         run: |
           echo "Feature branches: ${{ env.branches }}"
 
+      - name: Check if auto-merge is allowed for the repository
+        id: check_auto_merge
+        run: |
+          # Check if allow_auto_merge is enabled for the repository
+          allow_auto_merge=$(gh api -H "Accept: application/vnd.github.v3+json" /repos/${{ github.repository }} | jq '.allow_auto_merge')
+          echo "allow_auto_merge=$allow_auto_merge" >> $GITHUB_ENV
+          echo "allow_auto_merge=$allow_auto_merge"  # Debug output for auto-merge setting
+
       - name: Create PR for each feature branch
         id: create_prs
         run: |
@@ -77,24 +85,16 @@ jobs:
           for pr_url in ${{ env.pr_urls }}; do
             pr_number=$(echo $pr_url | grep -oP '\d+$')
 
-            # Check if auto-merge is available and enabled using mergeStateStatus
-            merge_state_status=$(gh pr view $pr_number --json mergeStateStatus -q .mergeStateStatus)
-            if [[ "$merge_state_status" == "AUTO_MERGE" ]]; then
-              echo "Auto-merge is enabled for PR #$pr_number."
-            else
-              echo "Auto-merge is not enabled for PR #$pr_number."
-
-              # Check if auto-merge option is available (i.e., if we can enable it)
-              can_enable_auto_merge=$(gh pr view $pr_number --json mergeable -q .mergeable)
-              if [[ "$can_enable_auto_merge" == "true" ]]; then
-                echo "Auto-merge is available for PR #$pr_number. Enabling auto-merge."
-                gh pr merge --auto $pr_number
-              else
-                # If auto-merge is not available, manually merge the PR
-                echo "Auto-merge is not available for PR #$pr_number. Merging manually."
-                gh pr merge $pr_number --merge --admin --body "Merging PR #$pr_number."
-              fi
+            # If auto-merge is not allowed, skip the auto-merge step
+            if [[ "${{ env.allow_auto_merge }}" == "true" ]]; then
+              echo "Auto-merge is available for the repository."
+              gh pr merge --auto $pr_number
+              continue
             fi
+
+            # If auto-merge is not available, manually merge the PR
+            echo "Auto-merge is not available for the repository. Manually merging PR #$pr_number."
+            gh pr merge $pr_number --merge --admin --body "Merging PR #$pr_number."
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
