@@ -61,8 +61,8 @@ jobs:
             pr_creator=$(gh pr view $pr_number --json author -q .author.login)
             echo "PR #$pr_number created by $pr_creator"
 
-            # Skip approval if the creator is the bot
-            if [[ "$pr_creator" != "github-actions[bot]" ]]; then
+            # Skip approval if the creator is the bot (either github-actions[bot] or app/github-actions)
+            if [[ "$pr_creator" != "github-actions[bot]" && "$pr_creator" != "app/github-actions" ]]; then
               echo "Approving PR #$pr_number"
               gh pr review $pr_number --approve
             else
