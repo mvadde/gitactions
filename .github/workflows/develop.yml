@@ -10,7 +10,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  auto-create-prs:
+  auto-create-prs-from-develop:
     runs-on: ubuntu-latest
 
     steps:
