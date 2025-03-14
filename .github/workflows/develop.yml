@@ -45,7 +45,7 @@ jobs:
           pr_urls=""
           for branch in ${{ env.branches }}; do
             # Check if a PR already exists between develop and the feature branch
-            existing_pr=$(gh pr list --base develop --head $branch --json url -q '.[].url')
+            existing_pr=$(gh pr list --base $branch --head develop--json url -q '.[].url')
 
             if [ -n "$existing_pr" ]; then
               echo "PR already exists: $existing_pr"
