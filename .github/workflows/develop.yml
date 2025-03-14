@@ -77,15 +77,15 @@ jobs:
           for pr_url in ${{ env.pr_urls }}; do
             pr_number=$(echo $pr_url | grep -oP '\d+$')
 
-            # Check if auto-merge is available and enabled
-            auto_merge_state=$(gh pr view $pr_number --json autoMergeState -q .autoMergeState)
-            if [[ "$auto_merge_state" == "ENABLED" ]]; then
+            # Check if auto-merge is available and enabled using mergeStateStatus
+            merge_state_status=$(gh pr view $pr_number --json mergeStateStatus -q .mergeStateStatus)
+            if [[ "$merge_state_status" == "AUTO_MERGE" ]]; then
               echo "Auto-merge is enabled for PR #$pr_number."
             else
               echo "Auto-merge is not enabled for PR #$pr_number."
 
               # Check if auto-merge option is available (i.e., if we can enable it)
-              can_enable_auto_merge=$(gh pr view $pr_number --json autoMergeable -q .autoMergeable)
+              can_enable_auto_merge=$(gh pr view $pr_number --json mergeable -q .mergeable)
               if [[ "$can_enable_auto_merge" == "true" ]]; then
                 echo "Auto-merge is available for PR #$pr_number. Enabling auto-merge."
                 gh pr merge --auto $pr_number
