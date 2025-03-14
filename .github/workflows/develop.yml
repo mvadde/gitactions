@@ -1,0 +1,99 @@
+name: Auto PR from develop to feature branches
+
+on:
+  push:
+    branches:
+      - develop  # Trigger when commits are pushed to the develop branch
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-create-prs-from-develop:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Fetch all branches
+        run: git fetch --all
+
+      - name: Get feature branches
+        id: get_branches
+        run: |
+          # Get all branches starting with 'feature/'
+          branches=$(git branch -r | grep 'origin/feature/' | sed 's|origin/||')
+          echo "branches=$branches" >> $GITHUB_ENV
+
+      - name: Debug feature branches
+        run: |
+          echo "Feature branches: ${{ env.branches }}"
+
+      - name: Check if auto-merge is allowed for the repository
+        id: check_auto_merge
+        run: |
+          # Check if allow_auto_merge is enabled for the repository
+          allow_auto_merge=$(gh api -H "Accept: application/vnd.github.v3+json" /repos/${{ github.repository }} | jq '.allow_auto_merge')
+          echo "allow_auto_merge=$allow_auto_merge" >> $GITHUB_ENV
+          echo "allow_auto_merge=$allow_auto_merge"  # Debug output for auto-merge setting
+
+      - name: Create PR for each feature branch
+        id: create_prs
+        run: |
+          pr_urls=""
+          for branch in ${{ env.branches }}; do
+            # Create a pull request from develop to feature branch and capture the URL from the output
+            pr_url=$(gh pr create --base $branch --head develop --title "Auto PR from develop to $branch" --body "This is an automated pull request from develop to $branch." | grep -oP 'https://github.com/\S+')
+            pr_urls="$pr_urls $pr_url"
+          done
+          echo "pr_urls=$pr_urls" >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Auto approve pull requests
+        run: |
+          for pr_url in ${{ env.pr_urls }}; do
+            pr_number=$(echo $pr_url | grep -oP '\d+$')
+
+            # Get the creator of the PR to check if it's the bot
+            pr_creator=$(gh pr view $pr_number --json author -q .author.login)
+            echo "PR #$pr_number created by $pr_creator"
+
+            # Skip approval if the creator is the bot (either github-actions[bot] or app/github-actions)
+            if [[ "$pr_creator" != "github-actions[bot]" && "$pr_creator" != "app/github-actions" ]]; then
+              echo "Approving PR #$pr_number"
+              gh pr review $pr_number --approve
+            else
+              echo "Skipping approval for PR #$pr_number (created by bot)"
+            fi
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check auto-merge status and merge if not enabled
+        run: |
+          for pr_url in ${{ env.pr_urls }}; do
+            pr_number=$(echo $pr_url | grep -oP '\d+$')
+
+            # If auto-merge is not allowed, skip the auto-merge step
+            if [[ "${{ env.allow_auto_merge }}" == "true" ]]; then
+              echo "Auto-merge is available for the repository."
+              gh pr merge --auto $pr_number
+              continue
+            fi
+
+            # If auto-merge is not available, manually merge the PR
+            echo "Auto-merge is not available for the repository. Manually merging PR #$pr_number."
+            gh pr merge $pr_number --merge --admin --body "Merging PR #$pr_number."
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
