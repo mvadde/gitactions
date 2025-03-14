@@ -33,7 +33,6 @@ jobs:
           # Get all branches starting with 'feature/'
           branches=$(git branch -r | grep 'origin/feature/' | sed 's|origin/||')
           echo "branches=$branches" >> $GITHUB_ENV
-          echo "branches=$branches"  # Debug output for branches
 
       - name: Debug feature branches
         run: |
