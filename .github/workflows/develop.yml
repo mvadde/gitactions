@@ -44,9 +44,17 @@ jobs:
         run: |
           pr_urls=""
           for branch in ${{ env.branches }}; do
-            # Create a pull request from develop to feature branch and capture the URL from the output
-            pr_url=$(gh pr create --base $branch --head develop --title "Auto PR from develop to $branch" --body "This is an automated pull request from develop to $branch." | grep -oP 'https://github.com/\S+')
-            pr_urls="$pr_urls $pr_url"
+            # Check if a PR already exists between develop and the feature branch
+            existing_pr=$(gh pr list --base develop --head $branch --json url -q '.[].url')
+
+            if [ -n "$existing_pr" ]; then
+              echo "PR already exists: $existing_pr"
+              pr_urls="$pr_urls $existing_pr"
+            else
+              # Create a new pull request from develop to the feature branch and capture the URL from the output
+              pr_url=$(gh pr create --base develop --head $branch --title "Auto PR from develop to $branch" --body "This is an automated pull request from develop to $branch." | grep -oP 'https://github.com/\S+')
+              pr_urls="$pr_urls $pr_url"
+            fi
           done
           echo "pr_urls=$pr_urls" >> $GITHUB_ENV
         env:
