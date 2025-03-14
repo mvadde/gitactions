@@ -24,16 +24,12 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
-      - name: Fetch all branches
-        run: git fetch --all
-
       - name: Get feature branches
         id: get_branches
         run: |
           # Get all branches starting with 'feature/'
           branches=$(git branch -r | grep 'origin/feature/' | sed 's|origin/||')
           echo "branches=$branches" >> $GITHUB_ENV
-          echo "branches=$branches"  # Debug output for branches
 
       - name: Debug feature branches
         run: |
