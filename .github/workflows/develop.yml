@@ -45,7 +45,7 @@ jobs:
           pr_urls=""
           for branch in ${{ env.branches }}; do
             # Create a pull request from develop to feature branch
-            pr_url=$(gh pr create --base develop --head $branch --title "Auto PR from develop to $branch" --body "This is an automated pull request from develop to $branch." --json url -q .url)
+            pr_url=$(gh pr create --base develop --head $branch --title "Auto PR from develop to $branch" --body "This is an automated pull request from develop to $branch." --web)
             pr_urls="$pr_urls $pr_url"
           done
           echo "pr_urls=$pr_urls" >> $GITHUB_ENV
