@@ -23,6 +23,14 @@ jobs:
       run: |
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+    - name: Generate Github App Token
+      uses: actions/create-github-app-token@v1
+      id: app-token
+      with:
+        app_id: ${{ secrets.APP_ID }}
+        private_key: ${{ secrets.PRIVATE_KEY }}
+        installation_id: ${{ secrets.INSTALLATION_ID }}
     
     - name: Check if auto-merge is allowed for the repository
       id: check_auto_merge
@@ -46,7 +54,7 @@ jobs:
         # Auto-approve the PR
         gh pr review $pr_number --approve
       env:
-        GITHUB_TOKEN: ${{ secrets.APPROVAL_DEMO }}
+        GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
     - name: Merge pull requests
       run: |
