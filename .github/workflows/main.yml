@@ -1,4 +1,4 @@
-name: Auto PR from main to develop branch
+name: Merge main to develop
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  auto-create-prs-from-main:
+  auto-create-pr-from-main:
     runs-on: ubuntu-latest
     
     steps:
@@ -23,6 +23,14 @@ jobs:
       run: |
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+    - name: Generate Github App Token
+      uses: actions/create-github-app-token@v1
+      id: app-token
+      with:
+        app_id: ${{ secrets.APP_ID }}
+        private_key: ${{ secrets.PRIVATE_KEY }}
+        installation_id: ${{ secrets.INSTALLATION_ID }}
     
     - name: Check if auto-merge is allowed for the repository
       id: check_auto_merge
@@ -31,21 +39,22 @@ jobs:
         allow_auto_merge=$(gh api -H "Accept: application/vnd.github.v3+json" /repos/${{ github.repository }} | jq '.allow_auto_merge')
         echo "allow_auto_merge=$allow_auto_merge" >> $GITHUB_ENV
     
-    - name: Create PR for each develop branch
-      id: create_prs
+    - name: Create PR for main to develop branch
+      id: create_pr
       run: |
-        # only one main and one develop branch
-        pr_url=$(gh pr create --base develop --head main --title "Auto PR from main to develop" --body "This is an automated pull request from main to develop." | grep -oP '
+        pr_url=$(gh pr create --base develop --head main --title "Auto PR from main to develop" --body "This is an automated pull request from main to develop." | grep -oP 'https://github.com/\S+')
         echo "pr_url=$pr_url" >> $GITHUB_ENV
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Auto approve pull requests
       run: |
         # Get the PR URLs from the environment variable
         pr_number=$(echo ${{ env.pr_url }} | grep -oP '\d+$')
-        # Auto-approve the PRs
+        # Auto-approve the PR
         gh pr review $pr_number --approve
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
     - name: Merge pull requests
       run: |
@@ -55,10 +64,10 @@ jobs:
         # Check if auto-merge is allowed
         allow_auto_merge=${{ env.allow_auto_merge }}
         if [[ $allow_auto_merge == "true" ]]; then
-          # Merge the PRs
+          # Merge the PR
           gh pr merge --auto $pr_number
         else
-          echo "Auto-merge is not allowed for the repository. merge the PRs manually."
+          echo "Auto-merge is not allowed for the repository. merge the PR manually."
           gh pr merge $pr_number --merge --admin --body "Merging PR #$pr_number."
         fi
       env:
