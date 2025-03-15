@@ -46,7 +46,7 @@ jobs:
         # Auto-approve the PR
         gh pr review $pr_number --approve
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.APPROVAL_DEMO }}
 
     - name: Merge pull requests
       run: |
