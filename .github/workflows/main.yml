@@ -68,7 +68,7 @@ jobs:
           gh pr merge --auto $pr_number
         else
           echo "Auto-merge is not allowed for the repository. merge the PR manually."
-          gh pr merge $pr_number --merge --admin --body "Merging PR #$pr_number."
+          gh pr merge $pr_number --rebase --admin --body "Rebasing and merging PR #$pr_number."
         fi
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
