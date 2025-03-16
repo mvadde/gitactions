@@ -1,4 +1,4 @@
-name: Auto PR from develop to feature branches
+name: Merge develop to feature branches
 
 on:
   push:
@@ -23,6 +23,14 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Generate Github App Token
+        uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app_id: ${{ secrets.APP_ID }}
+          private_key: ${{ secrets.PRIVATE_KEY }}
+          installation_id: ${{ secrets.INSTALLATION_ID }}
 
       - name: Fetch all branches
         run: git fetch --all
@@ -63,21 +71,11 @@ jobs:
         run: |
           for pr_url in ${{ env.pr_urls }}; do
             pr_number=$(echo $pr_url | grep -oP '\d+$')
-
-            # Get the creator of the PR to check if it's the bot
-            pr_creator=$(gh pr view $pr_number --json author -q .author.login)
-            echo "PR #$pr_number created by $pr_creator"
-
-            # Skip approval if the creator is the bot (either github-actions[bot] or app/github-actions)
-            if [[ "$pr_creator" != "github-actions[bot]" && "$pr_creator" != "app/github-actions" ]]; then
-              echo "Approving PR #$pr_number"
-              gh pr review $pr_number --approve
-            else
-              echo "Skipping approval for PR #$pr_number (created by bot)"
-            fi
+            echo "Approving PR #$pr_number"
+            gh pr review $pr_number --approve
           done
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
       - name: Check auto-merge status and merge if not enabled
         run: |
@@ -93,7 +91,7 @@ jobs:
 
             # If auto-merge is not available, manually merge the PR
             echo "Auto-merge is not available for the repository. Manually merging PR #$pr_number."
-            gh pr merge $pr_number --merge --admin --body "Merging PR #$pr_number."
+            gh pr merge $pr_number --rebase --admin --body "Rebasing and merging #$pr_number."
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
